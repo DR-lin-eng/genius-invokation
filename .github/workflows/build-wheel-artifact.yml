@@ -1,0 +1,66 @@
+name: Build and Publish Python Wheel
+
+on:
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install cffi protobuf hatchling build
+    
+    - name: Install Bun
+      run: |
+        powershell -c "irm bun.sh/install.ps1 | iex"
+        echo "$HOME/.bun/bin" >> $GITHUB_PATH
+      shell: bash
+    
+    - name: Verify Bun installation
+      run: bun --version
+      
+    - name: Install project dependencies
+      run: |
+        bun install
+      
+    - name: Build JavaScript packages
+      run: |
+        bun run build
+    
+    - name: Create Windows wheel
+      run: |
+        cd packages/pybinding
+        python -m build --wheel
+      env:
+        PLATFORM_TAG: win_amd64
+        
+    - name: Upload wheel artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: gitcg-wheel
+        path: packages/pybinding/dist/*.whl
+        retention-days: 30
+
+    - name: Verify wheel content
+      run: |
+        pip install wheel
+        cd packages/pybinding/dist
+        wheel unpack *.whl
+        dir gitcg-*
