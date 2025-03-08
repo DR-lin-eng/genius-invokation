@@ -10,8 +10,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      # 不需要指定 repository 参数，它会自动检出工作流所在的仓库
-      
+      # 简化的checkout配置，移除了所有不必要的参数
+    
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
