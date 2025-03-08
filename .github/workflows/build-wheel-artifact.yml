@@ -1,27 +1,25 @@
-name: Build gitcg and Card Data
+name: Build gitcg Minimal
 
-on:
-  workflow_dispatch:  # 允许手动触发
+# 只有手动触发
+on: workflow_dispatch
 
 jobs:
   build:
     runs-on: windows-latest
     
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      # 简化的checkout配置，移除了所有不必要的参数
+    # 最简化的检出步骤，没有任何额外选项
+    - uses: actions/checkout@v3
     
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v3
       with:
-        node-version: '20'
+        node-version: '18'
     
     - name: Setup Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-        cache: 'pip'
     
     - name: Install Python dependencies
       run: |
@@ -52,76 +50,9 @@ jobs:
       env:
         PLATFORM_TAG: win_amd64
     
-    - name: Package card data files
-      run: |
-        # 创建临时目录
-        mkdir -p card_data_package
-        
-        # 复制数据文件
-        cp -r packages/data/* card_data_package/
-        
-        # 创建一个简单的setup.py用于打包数据
-        echo 'from setuptools import setup, find_packages
-setup(
-    name="gitcg_data",
-    version="0.17.0",
-    description="Card data for Genius Invokation TCG",
-    packages=find_packages(),
-    include_package_data=True,
-    package_data={"": ["*.json", "*.js"]}
-)' > card_data_package/setup.py
-        
-        # 创建简单的包结构
-        mkdir -p card_data_package/gitcg_data
-        echo 'def get_data_path():
-    import os
-    return os.path.dirname(os.path.abspath(__file__))' > card_data_package/gitcg_data/__init__.py
-        
-        # 构建数据包wheel
-        cd card_data_package
-        python -m build --wheel
-      shell: bash
-        
     - name: Upload Python binding wheel
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3
       with:
         name: gitcg-wheel
         path: packages/pybinding/dist/*.whl
-        retention-days: 30
-
-    - name: Upload card data wheel
-      uses: actions/upload-artifact@v4
-      with:
-        name: gitcg-data-wheel
-        path: card_data_package/dist/*.whl
-        retention-days: 30
-
-    - name: Create installation instructions
-      run: |
-        echo "# Installation Instructions" > INSTALL.md
-        echo "" >> INSTALL.md
-        echo "## 1. Install the Python binding" >> INSTALL.md
-        echo '```bash' >> INSTALL.md
-        echo "pip install gitcg-*.whl" >> INSTALL.md
-        echo '```' >> INSTALL.md
-        echo "" >> INSTALL.md
-        echo "## 2. Install the card data package" >> INSTALL.md
-        echo '```bash' >> INSTALL.md
-        echo "pip install gitcg_data-*.whl" >> INSTALL.md
-        echo '```' >> INSTALL.md
-        echo "" >> INSTALL.md
-        echo "## 3. Test installation" >> INSTALL.md
-        echo '```python' >> INSTALL.md
-        echo "import gitcg" >> INSTALL.md
-        echo "import gitcg_data" >> INSTALL.md
-        echo "print('Successfully imported modules')" >> INSTALL.md
-        echo "print(f'Card data path: {gitcg_data.get_data_path()}')" >> INSTALL.md
-        echo '```' >> INSTALL.md
-      shell: bash
-
-    - name: Upload installation instructions
-      uses: actions/upload-artifact@v4
-      with:
-        name: installation-instructions
-        path: INSTALL.md
         retention-days: 30
